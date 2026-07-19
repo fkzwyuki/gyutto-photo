@@ -280,7 +280,8 @@
           <button class="chip on" data-fmt="image/jpeg">JPEG（互換性◎）</button>
           <button class="chip" data-fmt="image/webp">WebP（より小さい）</button>
         </div>
-        <p class="hint">※ 圧縮後のほうが大きくなる場合は、自動で元のデータを使います。</p>
+        <p class="hint">※ 圧縮後のほうが大きくなる場合は、自動で元のデータを使います。<br>
+        ※ 圧縮が終わると自動で保存（ダウンロード）を開始します。「複数のファイルのダウンロードを許可しますか？」と表示されたら「許可」を押してください。</p>
       </div>
     </div>
 
@@ -296,8 +297,9 @@
     </div>
 
     <div class="bulk" id="bulk">
-      <button class="btn primary sm" id="btn-vault-all">📦 すべて保管庫へ</button>
+      <button class="btn primary sm" id="btn-save-all">⬇ すべて保存</button>
       <button class="btn ghost sm" id="btn-share-all" hidden>📤 まとめて共有</button>
+      <button class="btn ghost sm" id="btn-vault-all">📦 保管庫へ</button>
       <button class="btn plain sm" id="btn-clear">✕ クリア</button>
     </div>
 
@@ -480,6 +482,7 @@ async function handleFiles(fileList) {
 
   const prog = $('progress'), fill = $('progress-fill'), ptext = $('progress-text');
   prog.classList.add('show');
+  const startIdx = results.length;
   let done = 0, errors = 0;
 
   for (const f of files) {
@@ -496,7 +499,8 @@ async function handleFiles(fileList) {
   renderResults();
   $('summary').scrollIntoView({ behavior: 'smooth', block: 'start' });
   if (errors) toast(`${errors}枚は読み込めませんでした`);
-  else toast(`${files.length}枚を圧縮しました 🎉`);
+  // 圧縮できた分は自動で保存（ダウンロード）まで実行する
+  await downloadAll(results.slice(startIdx));
 }
 
 /* ================= 結果の表示 ================= */
@@ -549,7 +553,7 @@ function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function download(blob, name) {
+function download(blob, name, silent) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -557,7 +561,18 @@ function download(blob, name) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-  toast('保存しました（写真アプリ / ダウンロードを確認）');
+  if (!silent) toast('保存しました（写真アプリ / ダウンロードを確認）');
+}
+
+async function downloadAll(items) {
+  if (!items || !items.length) return;
+  toast('保存を開始します…');
+  for (const r of items) {
+    download(r.blob, r.name, true);
+    // ブラウザの複数ダウンロード確認と競合しないよう間隔を空ける
+    await new Promise(res => setTimeout(res, 600));
+  }
+  toast(`${items.length}枚を保存しました（写真 / ダウンロードを確認）`);
 }
 
 async function shareFiles(items) {
@@ -690,6 +705,7 @@ const drop = $('drop');
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('hover'); }));
 drop.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
 
+$('btn-save-all').addEventListener('click', () => downloadAll(results));
 $('btn-vault-all').addEventListener('click', vaultAll);
 $('btn-share-all').addEventListener('click', () => shareFiles(results));
 $('btn-clear').addEventListener('click', () => {
