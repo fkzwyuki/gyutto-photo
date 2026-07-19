@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#10b981">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ぎゅっと写真 — 写真・スクショ圧縮</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #1c2733;
+    --sub: #6b7a89;
+    --line: #e4e9ee;
+    --accent: #10b981;
+    --accent-soft: #d9f4ea;
+    --accent-dark: #0b8f66;
+    --danger: #e05252;
+    --shadow: 0 2px 12px rgba(20, 40, 60, .07);
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12181f;
+      --card: #1b232c;
+      --text: #e8eef4;
+      --sub: #8b9aa8;
+      --line: #2a3540;
+      --accent: #2dd4a0;
+      --accent-soft: #123b2f;
+      --accent-dark: #35e0ab;
+      --shadow: 0 2px 12px rgba(0, 0, 0, .35);
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- ヘッダー ---------- */
+  header {
+    padding: calc(14px + env(safe-area-inset-top)) 0 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px; flex: none;
+    background: linear-gradient(135deg, #10b981, #0ea5a0);
+    display: grid; place-items: center; font-size: 21px;
+    box-shadow: var(--shadow);
+  }
+  header h1 { font-size: 19px; letter-spacing: .02em; }
+  header p { font-size: 11.5px; color: var(--sub); margin-top: 2px; }
+
+  /* ---------- タブ ---------- */
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--card); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav .wrap { display: flex; }
+  nav button {
+    flex: 1; background: none; border: none; cursor: pointer;
+    padding: 10px 0 8px; font-size: 11px; color: var(--sub);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-family: inherit;
+  }
+  nav button .ico { font-size: 22px; line-height: 1; }
+  nav button.active { color: var(--accent-dark); font-weight: 700; }
+  nav .badge {
+    position: absolute; transform: translate(16px, -4px);
+    background: var(--accent); color: #fff; font-size: 10px; font-weight: 700;
+    min-width: 17px; height: 17px; border-radius: 9px;
+    display: grid; place-items: center; padding: 0 4px;
+  }
+
+  /* ---------- カード共通 ---------- */
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 13px; color: var(--sub); font-weight: 700; margin-bottom: 10px; letter-spacing: .04em; }
+
+  /* ---------- 取り込みエリア ---------- */
+  .drop {
+    border: 2px dashed var(--line); border-radius: var(--radius);
+    padding: 26px 16px; text-align: center; transition: border-color .2s, background .2s;
+  }
+  .drop.hover { border-color: var(--accent); background: var(--accent-soft); }
+  .drop .big { font-size: 40px; }
+  .drop p { color: var(--sub); font-size: 12.5px; margin: 8px 0 14px; line-height: 1.6; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    border: none; border-radius: 12px; padding: 12px 18px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: transform .08s, opacity .2s;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,.35); }
+  .btn.ghost { background: var(--accent-soft); color: var(--accent-dark); }
+  .btn.plain { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+  .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn.sm { padding: 8px 13px; font-size: 12.5px; border-radius: 10px; }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+
+  /* ---------- 設定 ---------- */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    border: 1.5px solid var(--line); background: var(--card); color: var(--sub);
+    border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
+  .setting-row { margin-bottom: 16px; }
+  .setting-row:last-child { margin-bottom: 0; }
+  .setting-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .setting-label span { font-size: 13.5px; font-weight: 700; }
+  .setting-label em { font-style: normal; font-size: 12.5px; color: var(--accent-dark); font-weight: 700; }
+  input[type=range] {
+    width: 100%; appearance: none; -webkit-appearance: none; height: 6px;
+    border-radius: 3px; background: var(--line); outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); border: 4px solid var(--card);
+    box-shadow: 0 1px 6px rgba(0,0,0,.25); cursor: pointer;
+  }
+  .hint { font-size: 11.5px; color: var(--sub); margin-top: 6px; line-height: 1.5; }
+
+  /* ---------- 結果サマリー ---------- */
+  .summary {
+    display: none; background: linear-gradient(135deg, #10b981, #0d9488);
+    color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+    box-shadow: 0 6px 18px rgba(16,185,129,.3);
+  }
+  .summary.show { display: block; }
+  .summary .line1 { font-size: 12px; opacity: .85; }
+  .summary .line2 { font-size: 22px; font-weight: 800; margin: 4px 0; }
+  .summary .line3 { font-size: 13px; font-weight: 600; }
+
+  /* ---------- 結果リスト ---------- */
+  .item {
+    display: flex; gap: 12px; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid var(--line);
+  }
+  .item:last-child { border-bottom: none; }
+  .thumb {
+    width: 56px; height: 56px; border-radius: 12px; object-fit: cover;
+    flex: none; background: var(--line); cursor: pointer;
+  }
+  .meta { flex: 1; min-width: 0; }
+  .meta .name { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta .size { font-size: 11.5px; color: var(--sub); margin-top: 3px; }
+  .meta .size b { color: var(--accent-dark); }
+  .tag {
+    display: inline-block; margin-top: 4px; font-size: 10.5px; font-weight: 800;
+    background: var(--accent-soft); color: var(--accent-dark);
+    border-radius: 6px; padding: 2px 7px;
+  }
+  .tag.gray { background: var(--bg); color: var(--sub); }
+  .acts { display: flex; flex-direction: column; gap: 6px; flex: none; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); font-size: 16px; cursor: pointer; display: grid; place-items: center;
+  }
+  .icon-btn:active { background: var(--bg); }
+
+  .bulk { display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .bulk.show { display: flex; }
+
+  /* ---------- 保管庫 ---------- */
+  .vault-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .vault-head .total { font-size: 12.5px; color: var(--sub); }
+  .vault-head .total b { color: var(--text); font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .grid img {
+    width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px;
+    background: var(--line); cursor: pointer; display: block;
+  }
+  .empty { text-align: center; color: var(--sub); padding: 44px 16px; font-size: 13px; line-height: 1.8; }
+  .empty .big { font-size: 44px; margin-bottom: 8px; }
+
+  /* ---------- モーダル ---------- */
+  .modal {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: rgba(8, 12, 16, .88); backdrop-filter: blur(4px);
+    flex-direction: column;
+  }
+  .modal.show { display: flex; }
+  .modal .img-area {
+    flex: 1; min-height: 0; padding: 14px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 10px; }
+  .modal .bar {
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  .modal .info { text-align: center; color: #cdd6de; font-size: 12px; padding: 0 16px; line-height: 1.6; }
+  .modal .close {
+    position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px;
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,.14); color: #fff; font-size: 18px; cursor: pointer;
+  }
+
+  /* ---------- 進捗・トースト ---------- */
+  .progress { display: none; margin-bottom: 14px; }
+  .progress.show { display: block; }
+  .progress .track { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .progress .fill { height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .2s; }
+  .progress p { font-size: 12px; color: var(--sub); margin-top: 6px; text-align: center; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(20px); z-index: 60;
+    background: var(--text); color: var(--bg); font-size: 13px; font-weight: 700;
+    padding: 11px 20px; border-radius: 24px; opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s; white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .page { display: none; }
+  .page.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="logo">📷</div>
+    <div>
+      <h1>ぎゅっと写真</h1>
+      <p>写真・スクショを軽くして、スマホに保管</p>
+    </div>
+  </header>
+
+  <!-- ============ 圧縮ページ ============ -->
+  <section id="page-compress" class="page active">
+
+    <div class="card">
+      <div class="drop" id="drop">
+        <div class="big">🖼️</div>
+        <p>カメラで撮った写真やスクリーンショットを<br>選ぶだけで、ぎゅっと軽くします</p>
+        <div class="btn-row">
+          <button class="btn primary" id="btn-pick">🖼️ 写真・スクショを選ぶ</button>
+          <button class="btn ghost" id="btn-camera">📸 カメラで撮る</button>
+        </div>
+      </div>
+      <input type="file" id="file-pick" accept="image/*" multiple hidden>
+      <input type="file" id="file-camera" accept="image/*" capture="environment" hidden>
+    </div>
+
+    <div class="card">
+      <h2>圧縮の設定</h2>
+      <div class="setting-row">
+        <div class="setting-label"><span>サイズ（長辺）</span><em id="size-note">1600px — SNS・共有向き</em></div>
+        <div class="chips" id="size-chips">
+          <button class="chip" data-px="0">そのまま</button>
+          <button class="chip" data-px="2048">2048px</button>
+          <button class="chip on" data-px="1600">1600px</button>
+          <button class="chip" data-px="1280">1280px</button>
+          <button class="chip" data-px="1024">1024px</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label"><span>画質</span><em id="q-note">80%（おすすめ）</em></div>
+        <input type="range" id="quality" min="40" max="95" step="5" value="80">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label"><span>形式</span></div>
+        <div class="chips" id="fmt-chips">
+          <button class="chip on" data-fmt="image/jpeg">JPEG（互換性◎）</button>
+          <button class="chip" data-fmt="image/webp">WebP（より小さい）</button>
+        </div>
+        <p class="hint">※ 圧縮後のほうが大きくなる場合は、自動で元のデータを使います。<br>
+        ※ 圧縮が終わると自動で保存（ダウンロード）を開始します。「複数のファイルのダウンロードを許可しますか？」と表示されたら「許可」を押してください。</p>
+      </div>
+    </div>
+
+    <div class="progress" id="progress">
+      <div class="track"><div class="fill" id="progress-fill"></div></div>
+      <p id="progress-text">処理中…</p>
+    </div>
+
+    <div class="summary" id="summary">
+      <div class="line1">合計サイズ</div>
+      <div class="line2" id="sum-main">—</div>
+      <div class="line3" id="sum-sub">—</div>
+    </div>
+
+    <div class="bulk" id="bulk">
+      <button class="btn primary sm" id="btn-save-all">⬇ すべて保存</button>
+      <button class="btn ghost sm" id="btn-share-all" hidden>📤 まとめて共有</button>
+      <button class="btn ghost sm" id="btn-vault-all">📦 保管庫へ</button>
+      <button class="btn plain sm" id="btn-clear">✕ クリア</button>
+    </div>
+
+    <div class="card" id="results-card" style="display:none">
+      <h2>結果</h2>
+      <div id="results"></div>
+    </div>
+  </section>
+
+  <!-- ============ 保管庫ページ ============ -->
+  <section id="page-vault" class="page">
+    <div class="card">
+      <div class="vault-head">
+        <div class="total" id="vault-total"><b>0枚</b> ・ 0 KB</div>
+        <button class="btn danger sm" id="btn-vault-clear">全削除</button>
+      </div>
+      <div class="grid" id="vault-grid"></div>
+      <div class="empty" id="vault-empty">
+        <div class="big">📦</div>
+        まだ何も保管されていません。<br>圧縮した写真を「保管庫へ」で追加できます。
+      </div>
+    </div>
+    <p class="hint" style="padding:0 4px">保管庫の写真はこの端末のブラウザ内（IndexedDB）に保存されます。ブラウザのデータを消去すると失われるため、大切な写真は「保存」で端末の写真アプリにも書き出してください。</p>
+  </section>
+</div>
+
+<!-- ============ タブバー ============ -->
+<nav>
+  <div class="wrap">
+    <button id="tab-compress" class="active" onclick="showPage('compress')">
+      <span class="ico">✨</span>圧縮する
+    </button>
+    <button id="tab-vault" onclick="showPage('vault')">
+      <span class="ico">📦</span><span class="badge" id="vault-badge" hidden>0</span>保管庫
+    </button>
+  </div>
+</nav>
+
+<!-- ============ ビューアー ============ -->
+<div class="modal" id="modal">
+  <button class="close" id="modal-close">✕</button>
+  <div class="img-area"><img id="modal-img" alt=""></div>
+  <div class="info" id="modal-info"></div>
+  <div class="bar">
+    <button class="btn primary sm" id="modal-save">⬇ 保存</button>
+    <button class="btn ghost sm" id="modal-share" hidden>📤 共有</button>
+    <button class="btn danger sm" id="modal-delete" hidden>🗑 削除</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ================= 状態と設定 ================= */
+const settings = { maxEdge: 1600, quality: 0.8, format: 'image/jpeg' };
+let results = [];      // {id, name, blob, origSize, w, h, url, usedOriginal, stored}
+let nextId = 1;
+let modalCtx = null;   // {kind:'result'|'vault', ...}
+
+const $ = (id) => document.getElementById(id);
+
+/* ================= ユーティリティ ================= */
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function extFor(mime) { return mime === 'image/webp' ? '.webp' : mime === 'image/png' ? '.png' : '.jpg'; }
+
+function outName(orig, mime) {
+  const base = (orig || 'photo').replace(/\.[^.]+$/, '');
+  return base + '_min' + extFor(mime);
+}
+
+function canShareFiles() {
+  try {
+    const f = new File([new Blob(['x'])], 'x.jpg', { type: 'image/jpeg' });
+    return !!(navigator.canShare && navigator.canShare({ files: [f] }));
+  } catch { return false; }
+}
+const SHARE_OK = canShareFiles();
+
+/* ================= ページ切替 ================= */
+function showPage(name) {
+  $('page-compress').classList.toggle('active', name === 'compress');
+  $('page-vault').classList.toggle('active', name === 'vault');
+  $('tab-compress').classList.toggle('active', name === 'compress');
+  $('tab-vault').classList.toggle('active', name === 'vault');
+  if (name === 'vault') renderVault();
+}
+
+/* ================= 設定UI ================= */
+const SIZE_NOTES = {
+  0: 'サイズ変更なし（画質のみ圧縮）',
+  2048: '2048px — 高画質を保ちたい人向け',
+  1600: '1600px — SNS・共有向き',
+  1280: '1280px — バランス重視',
+  1024: '1024px — とにかく軽く',
+};
+$('size-chips').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  [...$('size-chips').children].forEach(c => c.classList.toggle('on', c === b));
+  settings.maxEdge = +b.dataset.px;
+  $('size-note').textContent = SIZE_NOTES[settings.maxEdge];
+});
+$('quality').addEventListener('input', (e) => {
+  settings.quality = +e.target.value / 100;
+  const v = +e.target.value;
+  $('q-note').textContent = v + '%' + (v === 80 ? '（おすすめ）' : v >= 90 ? '（高画質）' : v <= 55 ? '（最小サイズ）' : '');
+});
+$('fmt-chips').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  [...$('fmt-chips').children].forEach(c => c.classList.toggle('on', c === b));
+  settings.format = b.dataset.fmt;
+});
+
+/* ================= 画像の読み込みと圧縮 ================= */
+async function loadBitmap(file) {
+  // EXIFの回転を反映して読み込む
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    return await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('読み込み失敗')); };
+      img.src = url;
+    });
+  }
+}
+
+async function compress(file) {
+  const src = await loadBitmap(file);
+  const sw = src.width, sh = src.height;
+  const max = settings.maxEdge;
+  const scale = max > 0 ? Math.min(1, max / Math.max(sw, sh)) : 1;
+  const w = Math.max(1, Math.round(sw * scale));
+  const h = Math.max(1, Math.round(sh * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  // JPEGは透過を持てないため白で敷く（透過PNGスクショ対策）
+  if (settings.format === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+  ctx.drawImage(src, 0, 0, w, h);
+  if (src.close) src.close();
+
+  let blob = await new Promise(res => canvas.toBlob(res, settings.format, settings.quality));
+  if (!blob) throw new Error('圧縮失敗');
+
+  let usedOriginal = false;
+  if (blob.size >= file.size) { blob = file; usedOriginal = true; }
+
+  return {
+    id: nextId++,
+    name: usedOriginal ? (file.name || 'photo' + extFor(file.type)) : outName(file.name, settings.format),
+    blob, origSize: file.size, w, h,
+    url: URL.createObjectURL(blob),
+    usedOriginal, stored: false,
+  };
+}
+
+async function handleFiles(fileList) {
+  const files = [...fileList].filter(f => f.type.startsWith('image/'));
+  if (!files.length) { toast('画像ファイルを選んでください'); return; }
+
+  const prog = $('progress'), fill = $('progress-fill'), ptext = $('progress-text');
+  prog.classList.add('show');
+  const startIdx = results.length;
+  let done = 0, errors = 0;
+
+  for (const f of files) {
+    ptext.textContent = `圧縮中… ${done + 1} / ${files.length}`;
+    try {
+      results.push(await compress(f));
+    } catch { errors++; }
+    done++;
+    fill.style.width = Math.round(done / files.length * 100) + '%';
+  }
+
+  prog.classList.remove('show');
+  fill.style.width = '0';
+  renderResults();
+  $('summary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (errors) toast(`${errors}枚は読み込めませんでした`);
+  // 圧縮できた分は自動で保存（ダウンロード）まで実行する
+  await downloadAll(results.slice(startIdx));
+}
+
+/* ================= 結果の表示 ================= */
+function renderResults() {
+  const wrap = $('results');
+  wrap.innerHTML = '';
+  $('results-card').style.display = results.length ? '' : 'none';
+  $('bulk').classList.toggle('show', results.length > 0);
+  $('btn-share-all').hidden = !SHARE_OK || !results.length;
+
+  let before = 0, after = 0;
+  for (const r of results) {
+    before += r.origSize; after += r.blob.size;
+
+    const row = document.createElement('div');
+    row.className = 'item';
+    const pct = r.origSize ? Math.max(0, Math.round((1 - r.blob.size / r.origSize) * 100)) : 0;
+    row.innerHTML = `
+      <img class="thumb" src="${r.url}" alt="">
+      <div class="meta">
+        <div class="name">${escapeHtml(r.name)}</div>
+        <div class="size">${fmtBytes(r.origSize)} → <b>${fmtBytes(r.blob.size)}</b> ・ ${r.w}×${r.h}</div>
+        ${r.usedOriginal
+          ? '<span class="tag gray">元データを保持</span>'
+          : `<span class="tag">−${pct}% 軽量化</span>`}
+        ${r.stored ? '<span class="tag">📦 保管済み</span>' : ''}
+      </div>
+      <div class="acts">
+        <button class="icon-btn" title="保管庫へ" data-act="vault">📦</button>
+        <button class="icon-btn" title="保存" data-act="save">⬇</button>
+      </div>`;
+    row.querySelector('.thumb').addEventListener('click', () => openModal({ kind: 'result', r }));
+    row.querySelector('[data-act=vault]').addEventListener('click', () => storeToVault(r));
+    row.querySelector('[data-act=save]').addEventListener('click', () => download(r.blob, r.name));
+    wrap.appendChild(row);
+  }
+
+  const s = $('summary');
+  if (results.length) {
+    const pct = before ? Math.max(0, Math.round((1 - after / before) * 100)) : 0;
+    $('sum-main').textContent = `${fmtBytes(before)} → ${fmtBytes(after)}`;
+    $('sum-sub').textContent = `${results.length}枚 ・ ${pct}% 軽くなりました`;
+    s.classList.add('show');
+  } else {
+    s.classList.remove('show');
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function download(blob, name, silent) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  if (!silent) toast('保存しました（写真アプリ / ダウンロードを確認）');
+}
+
+async function downloadAll(items) {
+  if (!items || !items.length) return;
+  toast('保存を開始します…');
+  for (const r of items) {
+    download(r.blob, r.name, true);
+    // ブラウザの複数ダウンロード確認と競合しないよう間隔を空ける
+    await new Promise(res => setTimeout(res, 600));
+  }
+  toast(`${items.length}枚を保存しました（写真 / ダウンロードを確認）`);
+}
+
+async function shareFiles(items) {
+  const files = items.map(r => new File([r.blob], r.name, { type: r.blob.type }));
+  try {
+    await navigator.share({ files });
+  } catch (e) {
+    if (e.name !== 'AbortError') toast('共有できませんでした');
+  }
+}
+
+/* ================= 保管庫（IndexedDB） ================= */
+let db = null;
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('gyutto-photo', 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function tx(mode) { return db.transaction('images', mode).objectStore('images'); }
+function idbReq(r) { return new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+
+async function storeToVault(r, silent) {
+  if (r.stored) { if (!silent) toast('すでに保管済みです'); return; }
+  await idbReq(tx('readwrite').add({
+    name: r.name, blob: r.blob, origSize: r.origSize,
+    w: r.w, h: r.h, date: Date.now(),
+  }));
+  r.stored = true;
+  if (!silent) { renderResults(); toast('保管庫に入れました 📦'); }
+  refreshBadge();
+}
+
+async function vaultAll() {
+  const targets = results.filter(r => !r.stored);
+  if (!targets.length) { toast('すべて保管済みです'); return; }
+  for (const r of targets) await storeToVault(r, true);
+  renderResults();
+  toast(`${targets.length}枚を保管庫に入れました 📦`);
+}
+
+async function refreshBadge() {
+  const n = await idbReq(tx('readonly').count());
+  const b = $('vault-badge');
+  b.hidden = n === 0;
+  b.textContent = n;
+}
+
+let vaultUrls = [];
+async function renderVault() {
+  const items = await idbReq(tx('readonly').getAll());
+  items.sort((a, b) => b.date - a.date);
+
+  vaultUrls.forEach(URL.revokeObjectURL);
+  vaultUrls = [];
+
+  const grid = $('vault-grid');
+  grid.innerHTML = '';
+  $('vault-empty').style.display = items.length ? 'none' : '';
+  $('btn-vault-clear').style.display = items.length ? '' : 'none';
+
+  let total = 0;
+  for (const it of items) {
+    total += it.blob.size;
+    const url = URL.createObjectURL(it.blob);
+    vaultUrls.push(url);
+    const img = document.createElement('img');
+    img.src = url;
+    img.loading = 'lazy';
+    img.addEventListener('click', () => openModal({ kind: 'vault', it, url }));
+    grid.appendChild(img);
+  }
+  $('vault-total').innerHTML = `<b>${items.length}枚</b> ・ ${fmtBytes(total)}`;
+  refreshBadge();
+}
+
+/* ================= ビューアー ================= */
+function openModal(ctx) {
+  modalCtx = ctx;
+  const m = $('modal');
+  if (ctx.kind === 'result') {
+    const r = ctx.r;
+    $('modal-img').src = r.url;
+    $('modal-info').textContent = `${r.name} ・ ${r.w}×${r.h} ・ ${fmtBytes(r.blob.size)}`;
+    $('modal-delete').hidden = true;
+  } else {
+    const it = ctx.it;
+    $('modal-img').src = ctx.url;
+    $('modal-info').textContent =
+      `${it.name} ・ ${it.w}×${it.h} ・ ${fmtBytes(it.blob.size)} ・ ${new Date(it.date).toLocaleDateString('ja-JP')}`;
+    $('modal-delete').hidden = false;
+  }
+  $('modal-share').hidden = !SHARE_OK;
+  m.classList.add('show');
+}
+function closeModal() { $('modal').classList.remove('show'); modalCtx = null; }
+
+$('modal-close').addEventListener('click', closeModal);
+$('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
+$('modal-save').addEventListener('click', () => {
+  if (!modalCtx) return;
+  const o = modalCtx.kind === 'result' ? modalCtx.r : modalCtx.it;
+  download(o.blob, o.name);
+});
+$('modal-share').addEventListener('click', () => {
+  if (!modalCtx) return;
+  const o = modalCtx.kind === 'result' ? modalCtx.r : modalCtx.it;
+  shareFiles([o]);
+});
+$('modal-delete').addEventListener('click', async () => {
+  if (!modalCtx || modalCtx.kind !== 'vault') return;
+  await idbReq(tx('readwrite').delete(modalCtx.it.id));
+  closeModal();
+  renderVault();
+  toast('削除しました');
+});
+
+/* ================= イベント配線 ================= */
+$('btn-pick').addEventListener('click', () => $('file-pick').click());
+$('btn-camera').addEventListener('click', () => $('file-camera').click());
+$('file-pick').addEventListener('change', (e) => { handleFiles(e.target.files); e.target.value = ''; });
+$('file-camera').addEventListener('change', (e) => { handleFiles(e.target.files); e.target.value = ''; });
+
+const drop = $('drop');
+['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('hover'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('hover'); }));
+drop.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+
+$('btn-save-all').addEventListener('click', () => downloadAll(results));
+$('btn-vault-all').addEventListener('click', vaultAll);
+$('btn-share-all').addEventListener('click', () => shareFiles(results));
+$('btn-clear').addEventListener('click', () => {
+  results.forEach(r => URL.revokeObjectURL(r.url));
+  results = [];
+  renderResults();
+});
+$('btn-vault-clear').addEventListener('click', async () => {
+  if (!confirm('保管庫の写真をすべて削除します。よろしいですか？')) return;
+  await idbReq(tx('readwrite').clear());
+  renderVault();
+  toast('保管庫を空にしました');
+});
+
+/* ================= 起動 ================= */
+(async () => {
+  try {
+    db = await openDb();
+    refreshBadge();
+  } catch {
+    toast('保管庫を初期化できませんでした');
+  }
+})();
+</script>
+</body>
+</html>
